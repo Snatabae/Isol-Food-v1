@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>이솔 식단관리</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .text-neon-blue { text-shadow: 0 0 5px rgba(59, 130, 246, 0.4); }
+        .bg-blue-accent { background-color: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.5) !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        input[type="date"] {
+            position: relative;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            background: transparent;
+            bottom: 0;
+            color: transparent;
+            cursor: pointer;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+        .stocks-locked .quantity-btn {
+            opacity: 0.25;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 min-h-screen p-4 font-sans max-w-md mx-auto text-slate-100/90 overflow-x-hidden flex flex-col gap-4">
+
+    <header class="text-center my-1">
+        <h1 class="text-lg font-bold tracking-tight text-slate-200">
+            이솔 식단관리
+        </h1>
+    </header>
+
+    <section class="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden transition-all duration-300">
+        <button onclick="toggleSection('register-content', 'fold-icon-register')" class="w-full px-4 py-3.5 flex justify-between items-center bg-slate-900/50 hover:bg-slate-850 transition">
+            <span class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 text-blue-400"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                재료 등록하기
+            </span>
+            <span id="fold-icon-register" class="text-xs text-slate-500 transition-transform duration-300">▼</span>
+        </button>
+        
+        <div id="register-content" class="p-4 border-t border-slate-800/60 space-y-2 hidden">
+            <div class="flex gap-2">
+                <input type="text" id="stock-name" placeholder="음식명 (예: 소)" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500/50">
+                <input type="number" id="stock-count" placeholder="수량" class="w-20 bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-sm text-slate-200 text-center placeholder-slate-600 focus:outline-none focus:border-blue-500/50">
+            </div>
+            <input type="date" id="stock-date" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 text-center focus:outline-none focus:border-blue-500/50 cursor-pointer">
+            <button onclick="addStock()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-sm font-bold shadow-md active:scale-[0.98] transition">등록</button>
+        </div>
+    </section>
+
+    <section class="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden transition-all duration-300">
+        <button onclick="toggleSection('date-content', 'fold-icon-date')" class="w-full px-4 py-3.5 flex justify-between items-center bg-slate-900/50 hover:bg-slate-850 transition">
+            <span class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-blue-400"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
+                식단 계획 날짜 선택 <span id="date-day-display" class="text-blue-400 text-xs font-medium ml-1"></span>
+            </span>
+            <span id="fold-icon-date" class="text-xs text-slate-500 transition-transform duration-300">▲</span>
+        </button>
+
+        <div id="date-content" class="p-4 border-t border-slate-800/60 flex flex-col gap-2">
+            <div class="flex items-center gap-2">
+                <button onclick="moveDate(-1)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-xl text-sm font-bold transition active:scale-95">&lt;</button>
+                <input type="date" id="diet-date" onchange="loadDietData()" class="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-sm text-slate-200 font-semibold text-center focus:outline-none focus:border-blue-500/50 cursor-pointer">
+                <button onclick="moveDate(1)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-xl text-sm font-bold transition active:scale-95">&gt;</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden transition-all duration-300">
+        <button onclick="toggleSection('meal-content', 'fold-icon-meal')" class="w-full px-4 py-3.5 flex justify-between items-center bg-slate-900/50 hover:bg-slate-850 transition">
+            <span class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-blue-400"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>
+                오늘의 메뉴
+            </span>
+            <span id="fold-icon-meal" class="text-xs text-slate-500 transition-transform duration-300">▲</span>
+        </button>
+
+        <div id="meal-content" class="p-4 border-t border-slate-800/60 flex flex-col gap-3">
+            <div id="meal-morning" onclick="selectMeal('morning')" class="p-3 rounded-xl border border-slate-800 bg-slate-950/40 cursor-pointer transition flex flex-col gap-1">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">아침</span>
+                    <div class="flex gap-3">
+                        <button id="copy-morning" onclick="copyMealText('morning', event)" class="text-[11px] text-blue-400 hover:text-blue-300 font-medium hidden">📋 복사</button>
+                        <button onclick="clearMeal('morning', event)" class="text-[11px] text-slate-500 hover:text-slate-400">비우기</button>
+                    </div>
+                </div>
+                <div id="text-morning" class="text-sm font-medium text-slate-400 min-h-[24px] pt-1">음식을 선택 후 아래 재고 박스를 누르세요</div>
+            </div>
+
+            <div id="meal-lunch" onclick="selectMeal('lunch')" class="p-3 rounded-xl border border-slate-800 bg-slate-950/40 cursor-pointer transition flex flex-col gap-1">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">점심</span>
+                    <div class="flex gap-3">
+                        <button id="copy-lunch" onclick="copyMealText('lunch', event)" class="text-[11px] text-blue-400 hover:text-blue-300 font-medium hidden">📋 복사</button>
+                        <button onclick="clearMeal('lunch', event)" class="text-[11px] text-slate-500 hover:text-slate-400">비우기</button>
+                    </div>
+                </div>
+                <div id="text-lunch" class="text-sm font-medium text-slate-400 min-h-[24px] pt-1">음식을 선택 후 아래 재고 박스를 누르세요</div>
+            </div>
+
+            <div id="meal-dinner" onclick="selectMeal('dinner')" class="p-3 rounded-xl border border-slate-800 bg-slate-950/40 cursor-pointer transition flex flex-col gap-1">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">저녁</span>
+                    <div class="flex gap-3">
+                        <button id="copy-dinner" onclick="copyMealText('dinner', event)" class="text-[11px] text-blue-400 hover:text-blue-300 font-medium hidden">📋 복사</button>
+                        <button onclick="clearMeal('dinner', event)" class="text-[11px] text-slate-500 hover:text-slate-400">비우기</button>
+                    </div>
+                </div>
+                <div id="text-dinner" class="text-sm font-medium text-slate-400 min-h-[24px] pt-1">음식을 선택 후 아래 재고 박스를 누르세요</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden transition-all duration-300">
+        <div onclick="toggleSection('stock-content', 'fold-icon-stock')" class="w-full px-4 py-3.5 flex justify-between items-center bg-slate-900/50 hover:bg-slate-850 transition cursor-pointer select-none">
+            <span class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-blue-400"><path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>
+                잔여량
+            </span>
+            <div class="flex items-center gap-3">
+                <button id="lock-btn" onclick="window.toggleStockLock(event)" class="w-7 h-7 flex items-center justify-center bg-slate-800 border border-slate-700 rounded-lg active:scale-95 transition"></button>
+                <span id="fold-icon-stock" class="text-xs text-slate-500 transition-transform duration-300">▲</span>
+            </div>
+        </div>
+
+        <div id="stock-content" class="p-4 border-t border-slate-800/60">
+            <div id="stock-list" class="flex flex-col gap-4 max-h-[400px] overflow-y-auto no-scrollbar pr-0.5 stocks-locked">
+            </div>
+        </div>
+    </section>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue, remove, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAO_hFm_GHk4arOS1KRIxl4jFWc90oGda0",
+            authDomain: "isol-food-v1.firebaseapp.com",
+            databaseURL: "https://isol-food-v1-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "isol-food-v1",
+            storageBucket: "isol-food-v1.firebasestorage.app",
+            messagingSenderId: "745053225932",
+            appId: "1:745053225932:web:80348e44836703fa03d369"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let currentSelectedMeal = 'morning'; 
+        let currentDietData = { morning: {}, lunch: {}, dinner: {} };
+        let isStockLocked = true; 
+
+        const lockIconClosed = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 text-amber-400"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>`;
+        const lockIconOpen = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 text-white"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>`;
+
+        const FOOD_DICTIONARY = {
+            '쌀': '곡류', '찹쌀': '곡류', '현미': '곡류', '오트밀': '곡류', '쌀가루': '곡류', '보리': '곡류', 
+            '퀴노아': '곡류', '조': '곡류', '수수': '곡류', '밀가루': '곡류', '파스타': '곡류', '국수': '곡류', 
+            '중면': '곡류', '소면': '곡류', '기장': '곡류', '흑미': '곡류', '호밀': '곡류', '통밀': '곡류', 
+            '메밀': '곡류', '누룽지': '곡류', '옥수수': '곡류', '전분': '곡류', '타피오카': '곡류', '라이스페이퍼': '곡류',
+            '소': '육류/알류', '한우': '육류/알류', '안심': '육류/알류', '우둔': '육류/알류', '홍두깨': '육류/알류', 
+            '설도': '육류/알류', '양지': '육류/알류', '채끝': '육류/알류', '사태': '육류/알류', '닭': '육류/알류', 
+            '닭가슴살': '육류/알류', '닭안심': '육류/알류', '닭다리살': '육류/알류', '돼지': '육류/알류', '돼지안심': '육류/알류', 
+            '돼지등심': '육류/알류', '계란': '육류/알류', '달걀': '육류/알류', '노른자': '육류/알류', '흰자': '육류/알류', 
+            '메추리알': '육류/알류', '오리고기': '육류/알류', '양고기': '육류/알류',
+            '대구': '어패류', '가자미': '어패류', '연어': '어패류', '새우': '어패류', '게살': '어패류', 
+            '전복': '어패류', '멸치': '어패류', '조기': '어패류', '관자': '어패류', '오징어': '어패류',
+            '명태': '어패류', '동태': '어패류', '삼치': '어패류', '고등어': '어패류', '갈치': '어패류', 
+            '아귀': '어패류', '도미': '어패류', '이면수': '어패류', '임연수': '어패류', '굴': '어패류', 
+            '바지락': '어패류', '홍합': '어패류', '문어': '어패류', '낙지': '어패류', '황태': '어패류', 
+            '북어': '어패류', '대구살': '어패류', '가자미살': '어패류', '새우살': '어패류',
+            '두부': '두류/유제품', '두유': '두류/유제품', '콩': '두류/유제품', '완두콩': '두류/유제품', 
+            '서리태': '두류/유제품', '치즈': '두류/유제품', '요거트': '두류/유제품', '우유': '두류/유제품', 
+            '분유': '두류/유제품', '들깨': '두류/유제품', '참깨': '두류/유제품', '렌틸콩': '두류/유제품', 
+            '병아리콩': '두류/유제품', '작두콩': '두류/유제품', '팥': '두류/유제품', '녹두': '두류/유제품', 
+            '아기치즈': '두류/유제품', '킨더밀크': '두류/유제품', '버터': '두류/유제품', '올리브유': '두류/유제품', 
+            '참기름': '두류/유제품', '들기름': '두류/유제품', '현미유': '두류/유제품', '콩가루': '두류/유제품',
+            '청경채': '잎채소', '시금치': '잎채소', '양배추': '잎채소', '브로콜리': '잎채소', '배추': '잎채소', 
+            '아욱': '잎채소', '비타민채': '잎채소', '상추': '잎채소', '깻잎': '잎채소', '부추': '잎채소', 
+            '콜리플라워': '잎채소', '미나리': '잎채소', '적채': '잎채소', '케일': '잎채소', '로메인': '잎채소', 
+            '치커리': '잎채소', '근대': '잎채소', '쑥갓': '잎채소', '봄동': '잎채소', '얼갈이': '잎채소', 
+            '셀러리': '잎채소', '파슬리': '잎채소', '경종배추': '잎채소', '신선초': '잎채소',
+            '당근': '뿌리/열매채소', '고구마': '뿌리/열매채소', '감자': '뿌리/열매채소', '단호박': '뿌리/열매채소', 
+            '무': '뿌리/열매채소', '연근': '뿌리/열매채소', '우엉': '뿌리/열매채소', '애호박': '뿌리/열매채소', 
+            '오이': '뿌리/열매채소', '가지': '뿌리/열매채소', '토마토': '뿌리/열매채소', '파프리카': '뿌리/열매채소', 
+            '피망': '뿌리/열매채소', '양파': '뿌리/열매채소', '비트': '뿌리/열매채소', '대파': '뿌리/열매채소', 
+            '쪽파': '뿌리/열매채소', '실파': '뿌리/열매채소', '마늘': '뿌리/열매채소', '생강': '뿌리/열매채소', 
+            '마': '뿌리/열매채소', '토란': '뿌리/열매채소', '늙은호박': '뿌리/열매채소', '쥬키니': '뿌리/열매채소', 
+            '아스파라거스': '뿌리/열매채소', '미니양배추': '뿌리/열매채소', '방울토마토': '뿌리/열매채소',
+            '표고버섯': '버섯/해조류', '팽이버섯': '버섯/해조류', '새송이버섯': '버섯/해조류', '양송이버섯': '버섯/해조류', 
+            '느타리버섯': '버섯/해조류', '만가닥버섯': '버섯/해조류', '목이버섯': '버섯/해조류', '미역': '버섯/해조류', 
+            '김': '버섯/해조류', '다시마': '버섯/해조류', '파래': '버섯/해조류', '톳': '버섯/해조류', 
+            '매생이': '버섯/해조류', '우뭇가사리': '버섯/해조류', '해송이버섯': '버섯/해조류',
+            '사과': '과일', '바나나': '과일', '배': '과일', '참외': '과일', '수박': '과일', '멜론': '과일', 
+            '딸기': '과일', '블루베리': '과일', '아보카도': '과일', '귤': '과일', '오렌지': '과일', '자두': '과일', 
+            '포도': '과일', '복숭아': '과일', '자몽': '과일', '레몬': '과일', '라임': '과일', '망고': '과일', 
+            '키위': '과일', '무화과': '과일', '석류': '과일', '체리': '과일', '대추': '과일', '곶감': '과일', 
+            '한라봉': '과일', '레드향': '과일', '샤인머스캣': '과일', '라즈베리': '과일'
+        };
+
+        const CATEGORY_ICONS = {
+            '곡류': '•', '육류/알류': '•', '어패류': '•', '두류/유제품': '•', 
+            '잎채소': '•', '뿌리/열매채소': '•', '버섯/해조류': '•', '과일': '•', '미분류': '•'
+        };
+
+        function getCategoryOfIngredient(foodName) {
+            if (!foodName || typeof foodName !== 'string') return '미분류';
+            const targetName = foodName.trim();
+            if (FOOD_DICTIONARY[targetName]) return FOOD_DICTIONARY[targetName];
+            for (const key in FOOD_DICTIONARY) {
+                if (targetName.includes(key)) return FOOD_DICTIONARY[key];
+            }
+            return '미분류';
+        }
+
+        window.toggleSection = function(contentId, iconId) {
+            const content = document.getElementById(contentId);
+            const icon = document.getElementById(iconId);
+            if(content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.innerText = '▲';
+            } else {
+                content.classList.add('hidden');
+                icon.innerText = '▼';
+            }
+        }
+
+        window.toggleStockLock = function(event) {
+            event.stopPropagation(); 
+            isStockLocked = !isStockLocked;
+            
+            const lockBtn = document.getElementById('lock-btn');
+            const stockList = document.getElementById('stock-list');
+            
+            if (isStockLocked) {
+                lockBtn.innerHTML = lockIconClosed;
+                lockBtn.className = "w-7 h-7 flex items-center justify-center bg-slate-800 border border-slate-700 rounded-lg active:scale-95 transition";
+                if (stockList) stockList.classList.add('stocks-locked');
+            } else {
+                lockBtn.innerHTML = lockIconOpen;
+                lockBtn.className = "w-7 h-7 flex items-center justify-center bg-blue-600 border border-blue-500 rounded-lg active:scale-95 transition";
+                if (stockList) stockList.classList.remove('stocks-locked');
+            }
+        }
+
+        window.addStock = function() {
+            const name = document.getElementById('stock-name').value.trim();
+            const count = parseInt(document.getElementById('stock-count').value) || 0;
+            const madeDate = document.getElementById('stock-date').value; 
+            if(!name) return alert('음식 이름을 입력하세요.');
+            if(!madeDate) return alert('만든 날짜를 선택해 주세요.');
+
+            set(ref(db, 'stocks/' + name), { name, count, madeDate });
+            document.getElementById('stock-name').value = '';
+            document.getElementById('stock-count').value = '';
+            document.getElementById('stock-date').value = new Date().toISOString().substring(0, 10);
+            window.toggleSection('register-content', 'fold-icon-register'); 
+        }
+
+        window.deleteStockElement = function(name, event) {
+            event.stopPropagation(); 
+            if(confirm(`[${name}] 재고 박스를 삭제하시겠습니까?`)) {
+                remove(ref(db, 'stocks/' + name));
+            }
+        }
+
+        window.moveDate = function(days) {
+            const dateInput = document.getElementById('diet-date');
+            if (!dateInput.value) return;
+            const currentDate = new Date(dateInput.value);
+            currentDate.setDate(currentDate.getDate() + days);
+            dateInput.value = currentDate.toISOString().substring(0, 10);
+            window.loadDietData();
+        }
+
+        window.updateDayDisplay = function(dateStr) {
+            const week = ['일', '월', '화', '수', '목', '금', '토'];
+            const dayOfWeek = week[new Date(dateStr).getDay()];
+            document.getElementById('date-day-display').innerText = `(${dayOfWeek})`;
+        }
+
+        window.selectMeal = function(mealType) {
+            currentSelectedMeal = mealType;
+            ['morning', 'lunch', 'dinner'].forEach(type => {
+                const el = document.getElementById('meal-' + type);
+                if(type === mealType) {
+                    el.classList.add('bg-blue-accent', 'border-blue-500/50');
+                } else {
+                    el.classList.remove('bg-blue-accent', 'border-blue-500/50');
+                }
+            });
+        }
+
+        window.clickStockCard = function(stockName, event) {
+            const date = document.getElementById('diet-date').value;
+            if(!date) return alert('날짜를 먼저 선택해 주세요.');
+
+            const card = event.currentTarget;
+            
+            card.classList.remove('border-slate-800', 'bg-slate-900/85', 'border-red-900/60', 'bg-red-950/10');
+            card.classList.add('border-blue-500/70', 'bg-slate-800', 'scale-95');
+
+            const stockRef = ref(db, 'stocks/' + stockName);
+            get(stockRef).then((snapshot) => {
+                const stockData = snapshot.val();
+                if(!stockData || stockData.count <= 0) {
+                    alert('잔여 재고가 부족합니다!');
+                    window.loadDietData(); 
+                    return;
+                }
+
+                setTimeout(() => {
+                    set(stockRef, { 
+                        name: stockName, 
+                        count: stockData.count - 1,
+                        madeDate: stockData.madeDate || new Date().toISOString().substring(0, 10) 
+                    });
+
+                    if(!currentDietData[currentSelectedMeal]) {
+                        currentDietData[currentSelectedMeal] = {};
+                    }
+                    const currentCountInMeal = currentDietData[currentSelectedMeal][stockName] || 0;
+                    currentDietData[currentSelectedMeal][stockName] = currentCountInMeal + 1;
+
+                    set(ref(db, `diets_v2/${date}`), currentDietData);
+                }, 100);
+            });
+        }
+
+        window.removeFoodFromMeal = function(mealType, foodName, event) {
+            event.stopPropagation(); 
+            const date = document.getElementById('diet-date').value;
+            if(!date) return;
+
+            const stockRef = ref(db, 'stocks/' + foodName);
+            get(stockRef).then((snapshot) => {
+                const stockData = snapshot.val();
+                const currentStockCount = stockData ? stockData.count : 0;
+                const existingDate = stockData ? (stockData.madeDate || new Date().toISOString().substring(0, 10)) : new Date().toISOString().substring(0, 10);
+                
+                set(ref(db, 'stocks/' + foodName), { name: foodName, count: currentStockCount + 1, madeDate: existingDate });
+
+                if(currentDietData[mealType] && currentDietData[mealType][foodName]) {
+                    currentDietData[mealType][foodName] -= 1;
+                    if(currentDietData[mealType][foodName] <= 0) {
+                        delete currentDietData[mealType][foodName];
+                    }
+                    set(ref(db, `diets_v2/${date}`), currentDietData);
+                }
+            });
+        }
+
+        window.adjustStockCount = function(stockName, change, event) {
+            event.stopPropagation(); 
+            if (isStockLocked) return; 
+
+            const stockRef = ref(db, 'stocks/' + stockName);
+            get(stockRef).then((snapshot) => {
+                const stockData = snapshot.val();
+                if(stockData) {
+                    const newCount = Math.max(0, stockData.count + change);
+                    set(stockRef, { 
+                        name: stockName, 
+                        count: newCount, 
+                        madeDate: stockData.madeDate || new Date().toISOString().substring(0, 10) 
+                    });
+                }
+            });
+        }
+
+        window.clearMeal = function(mealType, event) {
+            event.stopPropagation();
+            const date = document.getElementById('diet-date').value;
+            if(!date) return;
+
+            const mealFoods = currentDietData[mealType] || {};
+            if(Object.keys(mealFoods).length === 0) return;
+
+            if(confirm('해당 끼니의 식단을 비우고 차감된 재고를 복구하시겠습니까?')) {
+                for(let foodName in mealFoods) {
+                    const returnCount = mealFoods[foodName];
+                    const stockRef = ref(db, 'stocks/' + foodName);
+                    
+                    get(stockRef).then((snapshot) => {
+                        const sData = snapshot.val();
+                        if(sData) {
+                            set(stockRef, { name: foodName, count: sData.count + returnCount, madeDate: sData.madeDate || new Date().toISOString().substring(0, 10) });
+                        } else {
+                            set(stockRef, { name: foodName, count: returnCount, madeDate: new Date().toISOString().substring(0, 10) });
+                        }
+                    });
+                }
+
+                currentDietData[mealType] = {};
+                set(ref(db, `diets_v2/${date}`), currentDietData);
+            }
+        }
+
+        window.copyMealText = function(mealType, event) {
+            event.stopPropagation();
+            const foods = currentDietData[mealType];
+            if(!foods || Object.keys(foods).length === 0) return;
+
+            const textArray = [];
+            for(let name in foods) {
+                textArray.push(`${name}`);
+            }
+            const resultText = textArray.join(', ');
+
+            navigator.clipboard.writeText(resultText).catch(err => {
+                const textArea = document.createElement("textarea");
+                textArea.value = resultText;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+            });
+        }
+
+        window.loadDietData = function() {
+            const date = document.getElementById('diet-date').value;
+            if(!date) return;
+
+            window.updateDayDisplay(date);
+
+            onValue(ref(db, `diets_v2/${date}`), (snapshot) => {
+                const data = snapshot.val();
+                if(data) {
+                    currentDietData = {
+                        morning: data.morning || {},
+                        lunch: data.lunch || {},
+                        dinner: data.dinner || {}
+                    };
+                } else {
+                    currentDietData = { morning: {}, lunch: {}, dinner: {} };
+                }
+
+                ['morning', 'lunch', 'dinner'].forEach(type => {
+                    const textEl = document.getElementById('text-' + type);
+                    const copyBtn = document.getElementById('copy-' + type);
+                    const foods = currentDietData[type];
+                    
+                    if(!foods || Object.keys(foods).length === 0) {
+                        textEl.innerHTML = `<span class="text-slate-600 text-xs font-normal">지정된 메뉴가 없습니다. 아래 박스를 눌러 추가하세요.</span>`;
+                        copyBtn.classList.add('hidden');
+                    } else {
+                        const foodStringArray = [];
+                        for(let name in foods) {
+                            foodStringArray.push(`
+                                <span onclick="window.removeFoodFromMeal('${type}', '${name}', event)" class="cursor-pointer hover:text-red-400 transition-colors duration-150 select-none">
+                                    <span class="text-slate-100 font-medium text-sm">${name}</span> 
+                                    <span class="text-slate-500 font-mono text-xs ml-0.5">${foods[name]}</span>
+                                </span>
+                            `);
+                        }
+                        textEl.innerHTML = foodStringArray.join(', ');
+                        copyBtn.classList.remove('hidden'); 
+                    }
+                });
+            });
+        }
+
+        onValue(ref(db, 'stocks'), (snapshot) => {
+            const stockListEl = document.getElementById('stock-list');
+            if (!stockListEl) return;
+            stockListEl.innerHTML = '';
+            
+            const data = snapshot.val();
+            if(!data || typeof data !== 'object') {
+                stockListEl.innerHTML = `<div class="text-center py-6 text-xs text-slate-600">등록된 음식 박스가 없습니다.</div>`;
+                return;
+            }
+
+            const groupedStocks = {};
+            Object.keys(data).forEach(key => {
+                const item = data[key];
+                if (!item || !item.name) return; 
+                const category = getCategoryOfIngredient(item.name);
+                if (!groupedStocks[category]) {
+                    groupedStocks[category] = [];
+                }
+                groupedStocks[category].push(item);
+            });
+
+            const categoryOrder = ['곡류', '육류/알류', '어패류', '두류/유제품', '잎채소', '뿌리/열매채소', '버섯/해조류', '과일', '미분류'];
+            let visibleSections = 0;
+
+            const todayObj = new Date();
+            todayObj.setHours(0,0,0,0);
+
+            categoryOrder.forEach(category => {
+                const items = groupedStocks[category];
+                if (!items || items.length === 0) return;
+
+                visibleSections++;
+                const categoryIcon = CATEGORY_ICONS[category] || '•';
+                let categorySectionHtml = `
+                    <div class="space-y-1.5 mt-1">
+                        <div class="text-xs font-semibold text-slate-400 bg-slate-950/60 px-2.5 py-1 rounded-lg border border-slate-800 flex items-center justify-between select-none">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-blue-500 font-bold">${categoryIcon}</span>
+                                <span>${category}</span>
+                            </div>
+                            <span class="text-[10px] text-slate-600 font-mono font-normal">종류: ${items.length}</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                `;
+
+                items.forEach(item => {
+                    let dateDisplay = '-';
+                    let isExpired = false;
+
+                    if (item.madeDate) {
+                        const itemDateObj = new Date(item.madeDate);
+                        itemDateObj.setHours(0,0,0,0);
+                        const diffTime = todayObj - itemDateObj;
+                        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                        
+                        const dateParts = item.madeDate.split('-');
+                        if (dateParts.length === 3) {
+                            dateDisplay = `${dateParts[1]}.${dateParts[2]}`; 
+                        } else {
+                            dateDisplay = item.madeDate;
+                        }
+
+                        if (diffDays >= 14) {
+                            isExpired = true; 
+                        }
+                    }
+
+                    // h-[68px] 고정 높이를 제거하고 min-h-[70px] h-auto 구조로 변경하여 글자 줄바꿈 시 레이아웃 붕괴 방지
+                    categorySectionHtml += `
+                        <div onclick="window.clickStockCard('${item.name}', event)" class="relative flex flex-col justify-between p-2 rounded-xl border shadow-md transition-all duration-75 cursor-pointer select-none min-h-[70px] h-auto pb-1.5 ${isExpired ? 'border-red-900/60 bg-red-950/10' : 'border-slate-800 hover:border-slate-700 bg-slate-900/85'}">
+                            <button onclick="window.deleteStockElement('${item.name}', event)" class="absolute top-0.5 right-1.5 text-slate-600 hover:text-red-400 font-sans text-xs p-0.5 transition">×</button>
+                            
+                            <div>
+                                <div class="text-xs font-semibold text-slate-200 truncate pr-4">${item.name}</div>
+                                <div class="text-[9px] font-mono mt-0.5 ${isExpired ? 'text-red-400 font-medium' : 'text-slate-500'}">
+                                    ${item.madeDate ? '제조: ' + dateDisplay : ''} ${isExpired ? '(2주경과)' : ''}
+                                </div>
+                            </div>
+                            
+                            <div class="flex justify-between items-center mt-1">
+                                <div class="flex gap-1">
+                                    <button onclick="window.adjustStockCount('${item.name}', -1, event)" class="quantity-btn w-5 h-5 flex items-center justify-center bg-slate-800 hover:bg-slate-700 rounded text-slate-400 text-[10px] font-bold active:scale-90 transition">-</button>
+                                    <button onclick="window.adjustStockCount('${item.name}', 1, event)" class="quantity-btn w-5 h-5 flex items-center justify-center bg-slate-800 hover:bg-slate-700 rounded text-slate-400 text-[10px] font-bold active:scale-90 transition">+</button>
+                                </div>
+                                <div class="text-right flex items-baseline gap-0.5">
+                                    <span class="text-[9px] text-slate-600">잔여</span>
+                                    <span class="text-sm font-bold text-blue-400 text-neon-blue">${item.count}</span>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+
+                categorySectionHtml += `</div></div>`;
+                stockListEl.innerHTML += categorySectionHtml;
+            });
+
+            if (visibleSections === 0) {
+                stockListEl.innerHTML = `<div class="text-center py-6 text-xs text-slate-600">등록된 음식 박스가 없습니다.</div>`;
+            }
+        });
+
+        const todayStr = new Date().toISOString().substring(0, 10);
+        document.getElementById('diet-date').value = todayStr;
+        document.getElementById('stock-date').value = todayStr; 
+        window.selectMeal('morning'); 
+        window.loadDietData();       
+        
+        document.getElementById('lock-btn').innerHTML = lockIconClosed;
+    </script>
+</body>
+</html>
